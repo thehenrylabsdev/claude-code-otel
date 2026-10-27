@@ -1,0 +1,28 @@
+# Local secrets — never commit
+.env
+.env.local
+.env.*.local
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Logs / temp
+*.log
+tmp/
+data/
+.cache/
+
+# Local override compose
+docker-compose.override.yml

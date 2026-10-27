@@ -1,0 +1,98 @@
+# OpenTelemetry Collector — receives Claude Code / Desktop telemetry
+# and fans out to Prometheus, Loki, Tempo, and PostgreSQL (via postgres-sink).
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+        cors:
+          allowed_origins:
+            - "*"
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 512
+    spike_limit_mib: 128
+
+  batch:
+    timeout: 2s
+    send_batch_size: 512
+    send_batch_max_size: 1024
+
+  resource:
+    attributes:
+      - key: collector.stack
+        value: claude-code-otel-local
+        action: upsert
+
+exporters:
+  # Claude metrics for Prometheus scrape
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    namespace: claude_code
+    send_timestamps: true
+    metric_expiration: 180m
+    enable_open_metrics: true
+    resource_to_telemetry_conversion:
+      enabled: true
+
+  # Event / prompt logs → Loki 3 native OTLP
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+    tls:
+      insecure: true
+
+  # Distributed traces (beta: CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1)
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+
+  # Durable structured storage for SQL analytics (prompts, tools, costs events)
+  otlphttp/postgres:
+    endpoint: http://postgres-sink:4319
+    tls:
+      insecure: true
+    encoding: json
+    compression: none
+    timeout: 10s
+    retry_on_failure:
+      enabled: true
+      initial_interval: 1s
+      max_interval: 30s
+      max_elapsed_time: 300s
+
+  debug:
+    verbosity: basic
+    sampling_initial: 2
+    sampling_thereafter: 50
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+service:
+  extensions: [health_check]
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters: [prometheus, debug]
+
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters: [otlphttp/loki, otlphttp/postgres, debug]
+
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters: [otlp/tempo, debug]
+
+  telemetry:
+    logs:
+      level: info

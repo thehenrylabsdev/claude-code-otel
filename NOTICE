@@ -1,0 +1,9 @@
+Claude Code OpenTelemetry Stack
+Copyright (c) 2026 Claude Code OTel contributors
+
+This project is not affiliated with, endorsed by, or sponsored by Anthropic, PBC.
+“Claude” and “Claude Code” are trademarks of Anthropic, PBC.
+
+Third-party components (Docker images and libraries) retain their own licenses,
+including but not limited to OpenTelemetry, Prometheus, Grafana Loki/Tempo/Grafana,
+and PostgreSQL.
