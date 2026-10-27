@@ -26,3 +26,8 @@ data/
 
 # Local override compose
 docker-compose.override.yml
+
+# Next.js analytics (also ignored via analytics/.gitignore)
+analytics/node_modules/
+analytics/.next/
+analytics/out/
