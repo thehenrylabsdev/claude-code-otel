@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Configure Claude Code (global settings + shell) for this local OTel stack.
+# Supports bash and zsh on macOS / Linux. For Windows, use install-global.ps1.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -40,7 +41,6 @@ path.write_text(json.dumps(data, indent=2) + "\n")
 print(f"Updated {path}")
 PY
 
-SHELL_RC="${ZDOTDIR:-$HOME}/.zshrc"
 BLOCK=$(cat <<EOF
 $MARKER_BEGIN
 # Claude Code OpenTelemetry → local Docker stack (claude-code-otel)
@@ -52,28 +52,56 @@ $MARKER_END
 EOF
 )
 
-if [ -f "$SHELL_RC" ] && grep -q "$MARKER_BEGIN" "$SHELL_RC"; then
-  # Replace existing block
-  tmp="$(mktemp)"
-  awk -v begin="$MARKER_BEGIN" -v end="$MARKER_END" '
-    $0 == begin {skip=1; next}
-    $0 == end {skip=0; next}
-    !skip {print}
-  ' "$SHELL_RC" > "$tmp"
-  printf "\n%s\n" "$BLOCK" >> "$tmp"
-  mv "$tmp" "$SHELL_RC"
-  echo "Refreshed OTel block in $SHELL_RC"
-else
-  printf "\n%s\n" "$BLOCK" >> "$SHELL_RC"
-  echo "Appended OTel block to $SHELL_RC"
-fi
+upsert_shell_rc() {
+  local shell_rc="$1"
+  mkdir -p "$(dirname "$shell_rc")"
+  touch "$shell_rc"
+  if grep -q "$MARKER_BEGIN" "$shell_rc" 2>/dev/null; then
+    local tmp
+    tmp="$(mktemp)"
+    awk -v begin="$MARKER_BEGIN" -v end="$MARKER_END" '
+      $0 == begin {skip=1; next}
+      $0 == end {skip=0; next}
+      !skip {print}
+    ' "$shell_rc" > "$tmp"
+    printf "\n%s\n" "$BLOCK" >> "$tmp"
+    mv "$tmp" "$shell_rc"
+    echo "Refreshed OTel block in $shell_rc"
+  else
+    printf "\n%s\n" "$BLOCK" >> "$shell_rc"
+    echo "Appended OTel block to $shell_rc"
+  fi
+}
+
+# Prefer the user's login shell; always cover common profiles on macOS/Linux.
+case "${SHELL:-}" in
+  */zsh)
+    upsert_shell_rc "${ZDOTDIR:-$HOME}/.zshrc"
+    ;;
+  */bash)
+    if [ -f "$HOME/.bashrc" ] || [ ! -f "$HOME/.bash_profile" ]; then
+      upsert_shell_rc "$HOME/.bashrc"
+    fi
+    if [ -f "$HOME/.bash_profile" ] || [ "$(uname -s)" = "Darwin" ]; then
+      upsert_shell_rc "$HOME/.bash_profile"
+    fi
+    ;;
+  *)
+    # Unknown shell — update both common files when present / create zshrc+bashrc
+    upsert_shell_rc "${ZDOTDIR:-$HOME}/.zshrc"
+    upsert_shell_rc "$HOME/.bashrc"
+    ;;
+esac
 
 DESKTOP_DIR="$ROOT/claude-desktop"
 echo
-echo "Claude Desktop (Code tab / app telemetry):"
-echo "  1. Prefer ~/.claude/settings.json env (already updated) for Code sessions."
-echo "  2. Optional MDM profile template: $DESKTOP_DIR/claude-desktop-otel.mobileconfig"
-echo "     Install with: open \"$DESKTOP_DIR/claude-desktop-otel.mobileconfig\""
+echo "Claude Desktop:"
+echo "  • Code tab / CLI: ~/.claude/settings.json (already updated) — works on macOS, Linux, Windows."
+echo "  • App-level MDM profile (macOS only): $DESKTOP_DIR/claude-desktop-otel.mobileconfig"
+echo "    Install: open \"$DESKTOP_DIR/claude-desktop-otel.mobileconfig\""
+echo
+echo "Windows users: run scripts/install-global.ps1 instead of this script."
 echo
 echo "Done. Restart Claude Code / Claude Desktop so OTel exporters re-initialize."
-echo "Verify: claude -p 'otel smoke test'   then check Grafana http://localhost:3000"
+echo "Verify: claude -p 'otel smoke test'"
+echo "Then open Analytics http://localhost:3010 and Grafana http://localhost:3000"

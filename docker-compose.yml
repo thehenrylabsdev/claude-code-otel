@@ -5,7 +5,8 @@
 # Ports (host):
 #   4317  OTLP gRPC
 #   4318  OTLP HTTP
-#   3000  Grafana
+#   3000  Grafana (ops)
+#   3010  Analytics (executive ROI UI)
 #   9090  Prometheus
 #   3100  Loki
 #   3200  Tempo
@@ -145,6 +146,39 @@ services:
       - loki
       - tempo
       - postgres
+
+  analytics:
+    build:
+      context: ./analytics
+    container_name: claude-analytics
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-claude}:${POSTGRES_PASSWORD:-changeme_local_only}@postgres:5432/${POSTGRES_DB:-claude_otel}
+      PROMETHEUS_URL: http://prometheus:9090
+      GRAFANA_URL: http://localhost:3000
+      AVG_HOURS_SAVED_PER_SESSION: ${AVG_HOURS_SAVED_PER_SESSION:-0.5}
+      HOURLY_ENGINEER_COST_USD: ${HOURLY_ENGINEER_COST_USD:-75}
+      PORT: "3010"
+      HOSTNAME: "0.0.0.0"
+    ports:
+      - "${ANALYTICS_PORT:-3010}:3010"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      prometheus:
+        condition: service_started
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3010/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
 
 volumes:
   prometheus_data:

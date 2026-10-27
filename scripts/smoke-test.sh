@@ -51,4 +51,8 @@ docker exec claude-postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c \
 echo "== Grafana health =="
 curl -sf http://127.0.0.1:3000/api/health && echo
 
+ANALYTICS_PORT="${ANALYTICS_PORT:-3010}"
+echo "== Analytics health (:${ANALYTICS_PORT}) =="
+curl -sf "http://127.0.0.1:${ANALYTICS_PORT}/api/health" && echo
+
 echo "Smoke test finished."
