@@ -155,7 +155,7 @@ Key variables (see [monitoring docs](https://code.claude.com/docs/en/monitoring-
 | --- | --- | --- |
 | `CLAUDE_CODE_ENABLE_TELEMETRY` | `1` | Enable OTel export |
 | `OTEL_EXPORTER_OTLP_PROTOCOL` | `grpc` | Protocol for the local collector |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://localhost:4317` | Collector endpoint |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://127.0.0.1:4317` | Collector endpoint |
 | `OTEL_LOG_USER_PROMPTS` | `1` | Persist prompt **content** |
 | `OTEL_LOG_ASSISTANT_RESPONSES` | `1` | Persist assistant text |
 | `OTEL_LOG_TOOL_DETAILS` | `1` | Persist tool parameters |
@@ -206,7 +206,8 @@ SELECT * FROM v_user_leaderboard;
 
 ## Privacy & security
 
-- OTel export is **opt-in** and goes only to **your** collector.
+- Running `install-global` turns on OTel export **and** prompt, assistant-response and tool-detail capture by default (`OTEL_LOG_USER_PROMPTS`, `OTEL_LOG_ASSISTANT_RESPONSES`, `OTEL_LOG_TOOL_DETAILS` = `1`). Data goes only to **your** collector. To turn capture off, see [SECURITY.md](SECURITY.md#turning-capture-off).
+- Published ports bind to `127.0.0.1` only. The Analytics app and Postgres sink have no authentication and are for a single local machine only.
 - With prompt logging enabled, treat Postgres/Loki volumes **and the Analytics UI** as **sensitive**.
 - Defaults in `.env.example` are for localhost only — change them before any shared or networked use.
 - See [SECURITY.md](SECURITY.md).
