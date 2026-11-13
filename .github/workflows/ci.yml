@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  stack:
+    name: Stack config, scripts and sink
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate docker-compose.yml
+        run: |
+          cp .env.example .env
+          docker compose config -q
+      - name: Shellcheck installer and helper scripts
+        run: shellcheck -S warning scripts/*.sh
+      - name: Compile the Postgres sink
+        run: python3 -m py_compile postgres-sink/app.py
+      - name: Parse the Grafana dashboard
+        run: python3 -m json.tool grafana/dashboards/claude-code-overview.json > /dev/null
+
+  analytics:
+    name: Analytics app lint and build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: analytics
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: analytics/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      # next build also runs the TypeScript check, with the route types it generates
+      - run: npm run build
