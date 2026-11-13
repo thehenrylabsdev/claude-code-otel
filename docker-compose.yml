@@ -23,10 +23,10 @@ services:
     volumes:
       - ./otel/otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
     ports:
-      - "4317:4317"
-      - "4318:4318"
-      - "8888:8888"
-      - "8889:8889"
+      - "127.0.0.1:4317:4317"
+      - "127.0.0.1:4318:4318"
+      - "127.0.0.1:8888:8888"
+      - "127.0.0.1:8889:8889"
     depends_on:
       prometheus:
         condition: service_started
@@ -51,7 +51,7 @@ services:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
 
   loki:
     image: grafana/loki:3.5.1
@@ -62,7 +62,7 @@ services:
       - ./loki/loki-config.yml:/etc/loki/config.yml:ro
       - loki_data:/loki
     ports:
-      - "3100:3100"
+      - "127.0.0.1:3100:3100"
 
   tempo:
     image: grafana/tempo:2.8.1
@@ -73,7 +73,7 @@ services:
       - ./tempo/tempo.yml:/etc/tempo/tempo.yml:ro
       - tempo_data:/var/tempo
     ports:
-      - "3200:3200"
+      - "127.0.0.1:3200:3200"
 
   postgres:
     image: postgres:17-alpine
@@ -87,7 +87,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d:ro
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     healthcheck:
       test:
         [
@@ -140,7 +140,7 @@ services:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     depends_on:
       - prometheus
       - loki
@@ -161,7 +161,7 @@ services:
       PORT: "3010"
       HOSTNAME: "0.0.0.0"
     ports:
-      - "${ANALYTICS_PORT:-3010}:3010"
+      - "127.0.0.1:${ANALYTICS_PORT:-3010}:3010"
     depends_on:
       postgres:
         condition: service_healthy
